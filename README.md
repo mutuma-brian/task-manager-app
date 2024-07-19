@@ -1,24 +1,12 @@
-# task-manager-app
+# Task Managemer App
 
-## Project setup
-```
-npm install
-```
 
-### Compiles and hot-reloads for development
-```
-npm run serve
-```
+1. **Install Dependencies**
+    npm install
 
-### Compiles and minifies for production
-```
-npm run build
-```
+2. **Run client**
+    npm run serve
+    
 
-### Lints and fixes files
-```
-npm run lint
-```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+4. **Run Server**
+    node server.js
