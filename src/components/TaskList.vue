@@ -2,7 +2,7 @@
   <v-container>
     <v-list>
       <v-list-item-group>
-        <v-list-item v-for="task in tasks" :key="task._id">
+        <v-list-item v-for="task in tasks" :key="task.id" @click="openDetailDialog(task)">
           <v-card class="ma-3" elevation="2">
             <v-card-title>
               <v-list-item-title>{{ task.title }}</v-list-item-title>
@@ -12,16 +12,13 @@
                 task.completed ? 'Completed' : 'Not Completed' }}
             </v-card-subtitle>
             <v-card-actions>
-              <!-- Here is the icon for changing status -->
               <v-icon
                 :class="{ 'mdi-check-circle': task.completed, 'mdi-checkbox-blank-circle-outline': !task.completed }"
-                @click="toggleCompletion(task)" class="mr-2" small></v-icon>
-              <!-- This button will allow us to edit task -->
-              <v-btn icon @click="openEditDialog(task)">
+                @click.stop="toggleCompletion(task)" class="mr-2" small></v-icon>
+              <v-btn icon @click.stop="openEditDialog(task)">
                 <v-icon small>mdi-pencil</v-icon>
               </v-btn>
-              <!-- The buttton will enable us to delete a task -->
-              <v-btn icon @click="deleteTask(task._id)">
+              <v-btn icon @click.stop="deleteTask(task.id)">
                 <v-icon small>mdi-delete</v-icon>
               </v-btn>
             </v-card-actions>
@@ -30,7 +27,6 @@
       </v-list-item-group>
     </v-list>
 
-    <!-- Dialog opens when we click the icon for editing task-->
     <v-dialog v-model="dialog" max-width="500px">
       <v-card>
         <v-card-title>
@@ -52,6 +48,52 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <v-dialog v-model="detailDialog" max-width="500px">
+      <v-card>
+        <v-card-title>
+          <span class="headline">Task Details</span>
+        </v-card-title>
+        <v-card-text>
+          <v-list>
+            <v-list-item>
+              <v-list-item-content>
+                <v-list-item-title>Title:</v-list-item-title>
+                <v-list-item-subtitle>{{ currentTask.title }}</v-list-item-subtitle>
+              </v-list-item-content>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-content>
+                <v-list-item-title>Description:</v-list-item-title>
+                <v-list-item-subtitle>{{ currentTask.description }}</v-list-item-subtitle>
+              </v-list-item-content>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-content>
+                <v-list-item-title>Priority:</v-list-item-title>
+                <v-list-item-subtitle>{{ currentTask.priority }}</v-list-item-subtitle>
+              </v-list-item-content>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-content>
+                <v-list-item-title>Due Date:</v-list-item-title>
+                <v-list-item-subtitle>{{ new Date(currentTask.dueDate).toLocaleDateString() }}</v-list-item-subtitle>
+              </v-list-item-content>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-content>
+                <v-list-item-title>Status:</v-list-item-title>
+                <v-list-item-subtitle>{{ currentTask.completed ? 'Completed' : 'Not Completed' }}</v-list-item-subtitle>
+              </v-list-item-content>
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn @click="detailDialog = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -62,6 +104,7 @@ export default {
     return {
       tasks: [],
       dialog: false,
+      detailDialog: false,
       isEdit: false,
       currentTask: {
         title: '',
@@ -89,7 +132,7 @@ export default {
     async toggleCompletion(task) {
       try {
         const updatedTask = { ...task, completed: !task.completed };
-        const response = await fetch(`http://localhost:3000/tasks/${task._id}`, {
+        const response = await fetch(`http://localhost:3000/tasks/${task.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -98,7 +141,7 @@ export default {
         });
         if (!response.ok) throw new Error('Network response was not ok');
         const result = await response.json();
-        this.tasks = this.tasks.map(t => (t._id === result._id ? result : t));
+        this.tasks = this.tasks.map(t => (t.id === result.id ? result : t));
       } catch (error) {
         console.error('Failed to update task:', error);
       }
@@ -111,7 +154,7 @@ export default {
     async saveTask() {
       try {
         const method = this.isEdit ? 'PUT' : 'POST';
-        const url = this.isEdit ? `http://localhost:3000/tasks/${this.currentTask._id}` : 'http://localhost:3000/tasks';
+        const url = this.isEdit ? `http://localhost:3000/tasks/${this.currentTask.id}` : 'http://localhost:3000/tasks';
         const response = await fetch(url, {
           method,
           headers: {
@@ -121,7 +164,7 @@ export default {
         });
         if (!response.ok) throw new Error('Network response was not ok');
         const result = await response.json();
-        this.tasks = this.tasks.map(t => (t._id === result._id ? result : t));
+        this.tasks = this.tasks.map(t => (t.id === result.id ? result : t));
         this.dialog = false;
       } catch (error) {
         console.error('Failed to save task:', error);
@@ -133,10 +176,14 @@ export default {
           method: 'DELETE',
         });
         if (!response.ok) throw new Error('Network response was not ok');
-        this.fetchTasks(); // Refresh the task list after deletion
+        this.fetchTasks(); // Refreshing the task list after deletion
       } catch (error) {
         console.error('Failed to delete task:', error);
       }
+    },
+    openDetailDialog(task) {
+      this.currentTask = { ...task };
+      this.detailDialog = true;
     },
   },
 };

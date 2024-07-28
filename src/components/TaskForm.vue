@@ -58,6 +58,7 @@ export default {
           this.tasks.push(newTask);
           this.resetForm();
           alert('Task saved successfully!');
+          this.$router.push('/view-task');
         } else {
           console.error('Error saving task:', newTask);
           alert('Error saving task.');
@@ -79,7 +80,7 @@ export default {
     async toggleCompletion(task) {
       try {
         const updatedTask = { ...task, completed: !task.completed };
-        const response = await fetch(`http://localhost:3000/tasks/${task._id}`, {
+        const response = await fetch(`http://localhost:3000/tasks/${task.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -88,7 +89,7 @@ export default {
         });
         if (!response.ok) throw new Error('Network response was not ok');
         const result = await response.json();
-        this.tasks = this.tasks.map(t => (t._id === result._id ? result : t));
+        this.tasks = this.tasks.map(t => (t.id === result.id ? result : t));
       } catch (error) {
         console.error('Failed to update task:', error);
       }

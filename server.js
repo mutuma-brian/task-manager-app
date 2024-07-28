@@ -1,64 +1,75 @@
 const express = require('express');
-const mongoose = require('mongoose');
+const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 
 const app = express();
-
 app.use(cors());
-
-mongoose.connect('mongodb://localhost/task_manager')
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('Failed to connect to MongoDB', err));
-
-const taskSchema = new mongoose.Schema({
-  title: String,
-  description: String,
-  priority: String,
-  dueDate: Date,
-  completed: { type: Boolean, default: false },
-});
-
-const Task = mongoose.model('Task', taskSchema);
-
 app.use(express.json());
 
-app.post('/tasks', async (req, res) => {
-  try {
-    const task = new Task(req.body);
-    await task.save();
-    res.status(201).send(task);
-  } catch (err) {
-    res.status(400).send(err);
+const db = new sqlite3.Database('./task_manager.db', (err) => {
+  if (err) {
+    console.error('Failed to connect to SQLite', err);
+  } else {
+    console.log('Connected to SQLite');
+    db.run(`CREATE TABLE IF NOT EXISTS tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT,
+      description TEXT,
+      priority TEXT,
+      dueDate TEXT,
+      completed BOOLEAN DEFAULT 0
+    )`);
   }
 });
 
-app.get('/tasks', async (req, res) => {
-  try {
-    const tasks = await Task.find();
-    res.send(tasks);
-  } catch (err) {
-    res.status(500).send(err);
-  }
+app.post('/tasks', (req, res) => {
+  const { title, description, priority, dueDate, completed } = req.body;
+  db.run(`INSERT INTO tasks (title, description, priority, dueDate, completed) VALUES (?, ?, ?, ?, ?)`,
+    [title, description, priority, dueDate, completed],
+    function (err) {
+      if (err) {
+        return res.status(400).send(err.message);
+      }
+      res.status(201).send({ id: this.lastID, ...req.body });
+    }
+  );
 });
 
-app.put('/tasks/:id', async (req, res) => {
-  try {
-    const task = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!task) return res.status(404).send('Task not found');
-    res.send(task);
-  } catch (err) {
-    res.status(400).send(err);
-  }
+app.get('/tasks', (req, res) => {
+  db.all(`SELECT * FROM tasks`, [], (err, rows) => {
+    if (err) {
+      return res.status(500).send(err.message);
+    }
+    res.send(rows);
+  });
 });
 
-app.delete('/tasks/:id', async (req, res) => {
-  try {
-    const task = await Task.findByIdAndDelete(req.params.id);
-    if (!task) return res.status(404).send('Task not found');
+app.put('/tasks/:id', (req, res) => {
+  const { title, description, priority, dueDate, completed } = req.body;
+  db.run(`UPDATE tasks SET title = ?, description = ?, priority = ?, dueDate = ?, completed = ? WHERE id = ?`,
+    [title, description, priority, dueDate, completed, req.params.id],
+    function (err) {
+      if (err) {
+        return res.status(400).send(err.message);
+      }
+      if (this.changes === 0) {
+        return res.status(404).send('Task not found');
+      }
+      res.send({ id: req.params.id, ...req.body });
+    }
+  );
+});
+
+app.delete('/tasks/:id', (req, res) => {
+  db.run(`DELETE FROM tasks WHERE id = ?`, req.params.id, function (err) {
+    if (err) {
+      return res.status(500).send(err.message);
+    }
+    if (this.changes === 0) {
+      return res.status(404).send('Task not found');
+    }
     res.send({ message: 'Task deleted' });
-  } catch (err) {
-    res.status(500).send(err);
-  }
+  });
 });
 
 app.listen(3000, () => {
