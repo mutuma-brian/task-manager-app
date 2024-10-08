@@ -1,4 +1,4 @@
-# Task Managemer App
+# Task Manager App
 
 
 1. **Install Dependencies**
